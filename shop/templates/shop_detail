@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Détail du Produit - Eren'store{% endblock %}
+
+{% block content %}
+<div class="container my-5 shop-detail">
+  <div class="row">
+    <!-- Colonne pour l'image principale du produit -->
+    <div class="col-md-6">
+      <!-- Vous pouvez utiliser une image dynamique : ex. product.image.url -->
+      <img src="{% static 'images/tshirt.jpg' %}" alt="Produit T-shirt" class="img-fluid rounded">
+    </div>
+    <!-- Colonne pour les détails du produit -->
+    <div class="col-md-6">
+      <h1 class="mb-3">T-shirt Basique</h1>
+      <p class="h4 text-primary">$50.00</p>
+      <p class="product-description my-4">
+        Ce t-shirt basique, confectionné à partir de coton de haute qualité, offre un confort inégalé et une coupe moderne,
+        idéal pour une tenue décontractée. Son design épuré en fait un incontournable de votre garde-robe.
+      </p>
+      <!-- Formulaire d'ajout au panier -->
+      <form method="post" action="{% url 'add_to_cart' product.id %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="quantity">Quantité :</label>
+          <input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control w-25">
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Ajouter au Panier</button>
+      </form>
+    </div>
+  </div>
+
+  <hr class="my-5">
+
+  <!-- Section Description Complète -->
+  <div class="row">
+    <div class="col-12">
+      <h2>Description Complète</h2>
+      <p>
+        Ici, vous pouvez détailler toutes les caractéristiques du produit : ses matériaux, sa fabrication, ses conseils d’entretien,
+        les tailles disponibles, ainsi que toute autre information utile pour convaincre le client.
+      </p>
+    </div>
+  </div>
+
+  <!-- Section Produits Similaires -->
+  <div class="row my-5">
+    <div class="col-12">
+      <h2 class="section-title">Produits Similaires</h2>
+      <div class="d-flex flex-wrap justify-content-between">
+        <!-- Exemple de produit similaire 1 -->
+        <div class="similar-product m-2" style="width: 30%;">
+          <img src="{% static 'images/product-1.png' %}" alt="Chemise Classique" class="img-fluid rounded">
+          <h5 class="mt-2">Chemise Classique</h5>
+          <p>$50.00</p>
+        </div>
+        <!-- Exemple de produit similaire 2 -->
+        <div class="similar-product m-2" style="width: 30%;">
+          <img src="{% static 'images/product-2.png' %}" alt="Pantalon Slim" class="img-fluid rounded">
+          <h5 class="mt-2">Pantalon Slim</h5>
+          <p>$78.00</p>
+        </div>
+        <!-- Exemple de produit similaire 3 -->
+        <div class="similar-product m-2" style="width: 30%;">
+          <img src="{% static 'images/product-3.png' %}" alt="Robe Élégante" class="img-fluid rounded">
+          <h5 class="mt-2">Robe Élégante</h5>
+          <p>$43.00</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% load static %}
+{% include "head.html" %}
+<body>
+  {% include "nav.html" %}
+
+  <div class="container py-5">
+    <a href="{% url 'shop' %}" class="btn btn-outline-secondary mb-4">&laquo; Retour à la boutique</a>
+
+    <div class="row">
+      <div class="col-md-6">
+        {% if produit.image_produit %}
+          <img src="{{ produit.image_produit.url }}" class="img-fluid rounded" alt="{{ produit.nom_produit }}">
+        {% else %}
+          <img src="{% static 'images/default-product.jpg' %}" class="img-fluid rounded" alt="Image par défaut">
+        {% endif %}
+      </div>
+      <div class="col-md-6">
+        <h2>{{ produit.nom_produit }}</h2>
+        <p class="text-muted">
+          <span class="badge bg-warning text-dark">
+            {% if produit.categories.first %}{{ produit.categories.first.nom_categorie }}{% else %}Aucune catégorie{% endif %}
+          </span>
+        </p>
+
+        <h4 class="text-success" id="prix-unitaire" data-price="{{ produit.prix }}">${{ produit.prix }}</h4>
+        <p>{{ produit.description }}</p>
+
+        <div class="d-flex align-items-center mb-3">
+          <button class="btn btn-outline-dark" id="decrement">-</button>
+          <input type="text" id="quantity" value="1" class="form-control text-center mx-2" style="width: 60px;" readonly>
+          <button class="btn btn-outline-dark" id="increment">+</button>
+        </div>
+
+        <h5>Total : <span id="total-price">${{ produit.prix }}</span></h5>
+
+        <button class="btn btn-warning" id="checkout-button" data-product-id="{{ produit.id }}">Acheter maintenant</button>
+      </div>
+    </div>
+
+    <!-- Produits similaires -->
+    <hr class="my-5">
+    <h4 class="mb-4">Produits similaires</h4>
+    <div class="row">
+      {% for p in produits_similaires %}
+        <div class="col-md-3 mb-4">
+          <a href="{% url 'produit_detail' p.id %}" class="text-decoration-none text-dark">
+            <div class="card h-100">
+              {% if p.image_produit %}
+                <img src="{{ p.image_produit.url }}" class="card-img-top" style="height: 180px; object-fit: contain;">
+              {% else %}
+                <img src="{% static 'images/default-product.jpg' %}" class="card-img-top" style="height: 180px; object-fit: contain;">
+              {% endif %}
+              <div class="card-body">
+                <h5 class="card-title">{{ p.nom_produit }}</h5>
+                <p class="text-success">${{ p.prix }}</p>
+              </div>
+            </div>
+          </a>
+        </div>
+      {% empty %}
+        <p>Aucun produit similaire trouvé.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% include "footer.html" %}
+
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const stripe = Stripe("{{ STRIPE_PUBLIC_KEY|default:'' }}");
+
+      const prixUnitaire = parseFloat(document.getElementById("prix-unitaire").dataset.price);
+      const totalPrice = document.getElementById("total-price");
+      const quantityInput = document.getElementById("quantity");
+      const checkoutBtn = document.getElementById("checkout-button");
+
+      document.getElementById("increment").addEventListener("click", () => {
+        let qty = parseInt(quantityInput.value);
+        qty++;
+        quantityInput.value = qty;
+        totalPrice.innerText = "$" + (qty * prixUnitaire).toFixed(2);
+      });
+
+      document.getElementById("decrement").addEventListener("click", () => {
+        let qty = parseInt(quantityInput.value);
+        if (qty > 1) {
+          qty--;
+          quantityInput.value = qty;
+          totalPrice.innerText = "$" + (qty * prixUnitaire).toFixed(2);
+        }
+      });
+
+      checkoutBtn.addEventListener("click", function () {
+        const productId = checkoutBtn.getAttribute("data-product-id");
+        const quantity = parseInt(quantityInput.value);
+        console.log("Début du checkout", { productId, quantity });
+
+
+        fetch("{% url 'create_checkout_session' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+          },
+          body: JSON.stringify({ product_id: productId, quantity: quantity })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.id) {
+            return stripe.redirectToCheckout({ sessionId: data.id });
+          } else {
+            alert("Erreur Stripe : " + (data.error || "Session invalide"));
+          }
+        })
+        .catch(err => {
+          console.error("Erreur Stripe:", err);
+          alert("Erreur Stripe : " + err.message);
+        });
+      });
+    });
+  </script>
+</body>

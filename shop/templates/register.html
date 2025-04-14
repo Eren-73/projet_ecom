@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <h2 class="text-center mb-4">Créer un compte</h2>
+      <form method="POST">
+        {% csrf_token %}
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            {{ form.errors }}
+          </div>
+        {% endif %}
+        <div class="mb-3">
+          <label for="username" class="form-label">Nom d'utilisateur</label>
+          <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">Adresse email</label>
+          <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Mot de passe</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <div class="mb-3">
+          <label for="confirm_password" class="form-label">Confirmer le mot de passe</label>
+          <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+        </div>
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-success">S'inscrire</button>
+        </div>
+        <p class="mt-3 text-center">
+          Vous avez déjà un compte ? <a href="{% url 'login' %}">Se connecter</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% if email_sent %}
+  <div class="container mt-4">
+    <div class="alert alert-success text-center">
+      Un email de confirmation a été envoyé. Veuillez vérifier votre boîte de réception.
+    </div>
+{% elif activation_pending %}
+  <div class="container mt-4">
+    <div class="alert alert-warning text-center">
+      Votre compte a été créé. Veuillez cliquer sur le lien de confirmation envoyé par email pour l'activer.
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% load static %}
+{% include "head.html" %}
+<body>
+  {% include "nav.html" %}
+
+  <div class="container py-5 text-center">
+    <img src="{% static 'images/success-check.svg' %}" alt="Succès" style="width: 120px;" class="mb-4">
+    <h2 class="text-success">Paiement réussi !</h2>
+    <p class="lead">Merci pour votre achat. Votre commande est en cours de traitement.</p>
+    <a href="{% url 'shop' %}" class="btn btn-outline-dark mt-4">Retour à la boutique</a>
+  </div>
+
+  {% include "footer.html" %}
+</body>

@@ -1,0 +1,79 @@
+{% load static %}
+
+<nav class="custom-navbar navbar navbar-expand-md navbar-dark bg-dark" aria-label="Furni navigation bar">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'index' %}">Eren'store<span>.</span></a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsFurni"
+      aria-controls="navbarsFurni" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarsFurni">
+      <ul class="custom-navbar-nav navbar-nav ms-auto mb-2 mb-md-0">
+        <li class="nav-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'index' %}">Home</a>
+        </li>
+        <li class="nav-item {% if request.resolver_match.url_name == 'shop' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'shop' %}">Shop</a>
+        </li>
+        <li class="nav-item {% if request.resolver_match.url_name == 'about' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'about' %}">About us</a>
+        </li>
+        <li class="nav-item {% if request.resolver_match.url_name == 'services' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'services' %}">Services</a>
+        </li>
+        <li class="nav-item {% if request.resolver_match.url_name == 'blog' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'blog' %}">Blog</a>
+        </li>
+        <li class="nav-item {% if request.resolver_match.url_name == 'contact' %}active{% endif %}">
+          <a class="nav-link" href="{% url 'contact' %}">Contact us</a>
+        </li>
+      </ul>
+
+      <ul class="custom-navbar-cta navbar-nav mb-2 mb-md-0 ms-5">
+        {% if user.is_authenticated %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center" href="#"
+              id="navbarUser" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+              style="width: 40px; height: 40px; border-radius: 50%; background-color: white; color: black; font-weight: bold; font-size: 18px;">
+              {{ user.first_name|default:user.username|first|upper }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUser">
+              <li><a class="dropdown-item" href="#">Mon compte</a></li>
+              <li><a class="dropdown-item" href="{% url 'logout' %}">Déconnexion</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'register' %}">
+              <img src="{% static 'images/user.svg' %}" alt="User">
+            </a>
+          </li>
+        {% endif %}
+
+        <li style="position: relative;">
+          <a class="nav-link" href="{% url 'cart' %}">
+            <img src="{% static 'images/cart.svg' %}" alt="Cart">
+          </a>
+          <span id="cart-count-badge"
+                {% if cart_count and cart_count > 0 %}
+                  style="display: inline-block;
+                         position: absolute;
+                         top: -5px;
+                         right: -5px;
+                         background-color: red;
+                         color: white;
+                         border-radius: 50%;
+                         padding: 3px 6px;
+                         font-size: 12px;"
+                {% else %}
+                  style="display: none;"
+                {% endif %}>
+            {{ cart_count }}
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>

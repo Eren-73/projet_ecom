@@ -1,0 +1,244 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  {% include "head.html" %}
+
+<body>
+
+  {% include "nav.html" %}
+
+  <!-- Hero + Search -->
+  <div class="hero">
+    <div class="container">
+      <div class="row justify-content-between">
+        <div class="col-lg-5">
+          <div class="intro-excerpt">
+            <h1>Shop</h1>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <form id="search-form" class="mb-4 d-flex">
+            <input type="text" name="q" id="search-input" class="form-control me-2" placeholder="Rechercher un produit..." autocomplete="off">
+            <button type="submit" class="btn btn-warning">Rechercher</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Catégories -->
+  <div class="untree_co-section categories-section py-5">
+    <div class="container">
+      <div class="row mb-5">
+        <div class="col-12 text-center">
+          <h2 class="section-title">Catégories de Vêtements</h2>
+          <p class="lead">Cliquez sur une catégorie pour filtrer les produits affichés.</p>
+        </div>
+      </div>
+      <div class="overflow-auto">
+        <div class="d-flex flex-nowrap">
+          <a href="{% url 'shop' %}" class="text-decoration-none">
+            <div class="p-3 text-center {% if not selected_categorie %}bg-warning{% endif %}" style="min-width: 150px; border-radius: 10px;">
+              <img src="{% static 'images/tshirt.jpg' %}" alt="Tous" class="mb-2" style="height: 40px;">
+              <div style="color: black;">Tous</div>
+            </div>
+          </a>
+
+          {% for cat in categories %}
+          <a href="{% url 'shop' %}?categorie={{ cat.id }}" class="text-decoration-none">
+            <div class="p-3 text-center {% if selected_categorie == cat.id %}bg-warning{% endif %}" style="min-width: 150px; border-radius: 10px;">
+              <img src="{% static 'images/tshirt.jpg' %}" alt="{{ cat.nom_categorie }}" class="mb-2" style="height: 40px;">
+              <div style="color: black;">{{ cat.nom_categorie }}</div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Produits -->
+  <div class="untree_co-section product-section before-footer-section">
+    <div class="container">
+      <div class="row" id="product-container">
+        {% include "partials/_produits_list.html" %}
+      </div>
+    </div>
+  </div>
+
+  {% include "footer.html" %}
+  <div id="toast" class="toast"></div>
+
+  <style>
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #333;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 5px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+      font-size: 15px;
+    }
+    .toast.show { opacity: 1; }
+    .shake { animation: shake 0.4s ease-in-out; }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      20% { transform: translateX(-4px); }
+      40% { transform: translateX(4px); }
+      60% { transform: translateX(-2px); }
+      80% { transform: translateX(2px); }
+      100% { transform: translateX(0); }
+    }
+    .product-item {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    .product-thumbnail {
+      max-height: 180px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+    .product-description {
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .product-category-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 12px;
+      border-radius: 10px;
+      background-color: #ffc107;
+      color: #000;
+      margin-bottom: 5px;
+      width: fit-content;
+    }
+  </style>
+
+  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/tiny-slider.js' %}"></script>
+  <script>
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function refreshCartCountBadge() {
+      fetch("{% url 'api_cart_count' %}")
+        .then(res => res.json())
+        .then(data => {
+          const badge = document.getElementById("cart-count-badge");
+          if (badge) {
+            badge.textContent = data.count;
+            badge.style.display = data.count > 0 ? "inline-block" : "none";
+          }
+        });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      if (toast) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+      }
+    }
+
+    function shakeCartIcon() {
+      const icon = document.querySelector('a[href$="{% url "cart" %}"] img');
+      if (icon) {
+        icon.classList.add("shake");
+        setTimeout(() => icon.classList.remove("shake"), 400);
+      }
+    }
+
+    function activateCartButtons() {
+      document.querySelectorAll(".btn-add-to-cart").forEach(button => {
+        button.addEventListener("click", function(e) {
+          e.preventDefault();
+          const productId = this.getAttribute("data-product-id");
+          let url = "{% url 'add_to_cart' 0 %}".replace("0", productId);
+
+          fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify({ product_id: productId, quantity: 1 })
+          })
+          .then(response => response.json())
+          .then(data => {
+            showToast("Produit ajouté au panier !");
+            shakeCartIcon();
+            refreshCartCountBadge();
+          })
+          .catch(error => {
+            console.error("Erreur:", error);
+            showToast("Erreur lors de l'ajout au panier.");
+          });
+        });
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      refreshCartCountBadge();
+      activateCartButtons();
+
+      const searchForm = document.getElementById("search-form");
+      const searchInput = document.getElementById("search-input");
+      const productContainer = document.getElementById("product-container");
+
+      // Recherche AJAX pendant la saisie
+      let searchTimeout = null;
+      searchInput.addEventListener("input", function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          const query = searchInput.value;
+
+          fetch(`/api/search-products/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+              productContainer.innerHTML = data.html;
+              activateCartButtons();
+            })
+            .catch(error => {
+              console.error("Erreur AJAX :", error);
+              showToast("Erreur lors de la recherche.");
+            });
+        }, 300); // délai après frappe
+      });
+
+      // Bloquer le formulaire classique
+      searchForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+      });
+    });
+  </script>
+</body>
+</html>

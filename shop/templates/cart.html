@@ -1,0 +1,222 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  {% include "head.html" %}
+
+<body>
+
+  <!-- Start Header/Navigation -->
+  {% include "nav.html" %}
+  <!-- End Header/Navigation -->
+
+  <!-- Start Hero Section -->
+  <div class="hero">
+    <div class="container">
+      <div class="row justify-content-between">
+        <div class="col-lg-5">
+          <div class="intro-excerpt">
+            <h1>Cart</h1>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <!-- Vous pouvez insérer ici une image ou une bannière -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- End Hero Section -->
+
+  <!-- Start Cart Table Section -->
+  <div class="untree_co-section before-footer-section">
+    <div class="container">
+      <form method="post">
+        {% csrf_token %}
+        <div class="site-blocks-table">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="product-thumbnail">Image</th>
+                <th class="product-name">Product</th>
+                <th class="product-price">Price</th>
+                <th class="product-quantity">Quantity</th>
+                <th class="product-total">Total</th>
+                <th class="product-remove">Remove</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in produits %}
+              <tr>
+                <td class="product-thumbnail">
+                  <img src="{{ item.produit.image_produit.url }}" alt="{{ item.produit.nom_produit }}" class="img-fluid">
+                </td>
+                <td class="product-name">
+                  <h2 class="h5 text-black">{{ item.produit.nom_produit }}</h2>
+                </td>
+                <td>${{ item.produit.prix }}</td>
+                <td>
+                  <div class="input-group mb-3 d-flex align-items-center quantity-container" style="max-width: 120px;">
+                    <div class="input-group-prepend">
+                      <button class="btn btn-outline-black decrease" type="button">&minus;</button>
+                    </div>
+                    <input type="text" class="form-control text-center quantity-amount" value="{{ item.quantite }}" data-product-id="{{ item.produit.id }}" aria-label="Quantity">
+                    <div class="input-group-append">
+                      <button class="btn btn-outline-black increase" type="button">&plus;</button>
+                    </div>
+                  </div>
+                </td>
+                <td class="product-total">${{ item.sous_total|floatformat:2 }}</td>
+                <td>
+                  <a href="{% url 'remove_from_cart' item.produit.id %}" class="btn btn-black btn-sm">X</a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6">Votre panier est vide.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </form>
+      <div class="row">
+        <div class="col-md-6">
+          <!-- Bouton pour continuer vos achats redirige vers la boutique -->
+          <button class="btn btn-outline-black btn-sm btn-block" onclick="window.location='{% url 'shop' %}'">Continue Shopping</button>
+        </div>
+        <div class="col-md-6 pl-5">
+          <div class="row justify-content-end">
+            <div class="col-md-7">
+              <div class="row">
+                <div class="col-md-12 text-right border-bottom mb-5">
+                  <h3 class="text-black h4 text-uppercase">Cart Totals</h3>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <span class="text-black">Subtotal</span>
+                </div>
+                <div class="col-md-6 text-right">
+                  <strong class="text-black cart-total">${{ total }}</strong>
+                </div>
+              </div>
+              <div class="row mb-5">
+                <div class="col-md-6">
+                  <span class="text-black">Total</span>
+                </div>
+                <div class="col-md-6 text-right">
+                  <strong class="text-black cart-total">${{ total }}</strong>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12">
+                  <button class="btn btn-black btn-lg py-3 btn-block" onclick="window.location='{% url 'checkout' %}'">Proceed To Checkout</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End row -->
+    </div>
+  </div>
+  <!-- End Cart Table Section -->
+
+  {% include "footer.html" %}
+
+  <!-- Scripts -->
+  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/tiny-slider.js' %}"></script>
+  <script src="{% static 'js/custom.js' %}"></script>
+
+ <!-- Définir l'URL pour la mise à jour de la quantité (résolue par Django) -->
+<script>
+  const updateCartQuantityUrl = "{% url 'update_cart_quantity' %}";
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  // Fonction utilitaire pour récupérer le token CSRF
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + "=")) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Fonction qui envoie la nouvelle quantité au backend via AJAX
+  function updateQuantity(productId, newQuantity, quantityInput) {
+    fetch(updateCartQuantityUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": getCookie("csrftoken")
+      },
+      body: new URLSearchParams({
+        'product_id': productId,
+        'quantity': newQuantity
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.error) {
+        // Mise à jour du sous-total sur la ligne du produit
+        const row = quantityInput.closest("tr");
+        const lineTotalCell = row.querySelector(".product-total");
+        if (lineTotalCell) {
+          lineTotalCell.textContent = "$" + data.line_total.toFixed(2);
+        }
+        // Mise à jour du total du panier sur toutes les balises correspondantes
+        document.querySelectorAll(".cart-total").forEach(elem => {
+          elem.textContent = "$" + data.cart_total.toFixed(2);
+        });
+      } else {
+        alert("Error updating quantity: " + data.error);
+      }
+    })
+    .catch(err => console.error("Erreur updateQuantity:", err));
+  }
+
+  // Gestionnaire pour le bouton "+" : incrémente la quantité d'une unité
+  document.querySelectorAll(".btn.increase").forEach(function(button) {
+    button.addEventListener("click", function() {
+      const quantityInput = this.closest(".input-group").querySelector(".quantity-amount");
+      let currentQuantity = parseInt(quantityInput.value, 10);
+      if (isNaN(currentQuantity)) {
+        currentQuantity = 0;
+      }
+      // Incrémente uniquement de 1
+      currentQuantity += 1;
+      quantityInput.value = currentQuantity;
+      const productId = quantityInput.getAttribute("data-product-id");
+      updateQuantity(productId, currentQuantity, quantityInput);
+    });
+  });
+
+  // Gestionnaire pour le bouton "-" : décrémente la quantité si elle est supérieure à 1
+  document.querySelectorAll(".btn.decrease").forEach(function(button) {
+    button.addEventListener("click", function() {
+      const quantityInput = this.closest(".input-group").querySelector(".quantity-amount");
+      let currentQuantity = parseInt(quantityInput.value, 10);
+      if (isNaN(currentQuantity) || currentQuantity <= 0) {
+        currentQuantity = 0;
+      }
+      if (currentQuantity > 1) {
+        currentQuantity -= 1;
+        quantityInput.value = currentQuantity;
+        const productId = quantityInput.getAttribute("data-product-id");
+        updateQuantity(productId, currentQuantity, quantityInput);
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>

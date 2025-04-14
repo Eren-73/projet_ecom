@@ -1,0 +1,29 @@
+{% load static %}
+{% for produit in produits %}
+  <div class="col-12 col-md-4 col-lg-3 mb-5 d-flex produit-item">
+    <a href="{% url 'produit_detail' produit.id %}" class="text-decoration-none text-dark w-100 h-100">
+      <div class="product-item w-100 d-flex flex-column h-100">
+        {% if produit.image_produit %}
+          <img src="{{ produit.image_produit.url }}" class="img-fluid product-thumbnail" alt="{{ produit.nom_produit }}">
+        {% else %}
+          <img src="{% static 'images/default-product.jpg' %}" class="img-fluid product-thumbnail" alt="Image par défaut">
+        {% endif %}
+        <span class="product-category-badge">
+          {% if produit.categories.first %}{{ produit.categories.first.nom_categorie }}{% else %}Aucune{% endif %}
+        </span>
+        <h3 class="product-title">{{ produit.nom_produit }}</h3>
+        <strong class="product-price">${{ produit.prix }}</strong>
+        <p class="product-description">{{ produit.description }}</p>
+        <div class="mt-auto">
+          <button type="button"
+                  class="btn btn-add-to-cart"
+                  onclick="event.preventDefault(); event.stopPropagation(); ajouterAuPanier({{ produit.id }});">
+            +
+          </button>
+        </div>
+      </div>
+    </a>
+  </div>
+{% empty %}
+  <p>Aucun produit disponible pour cette recherche ou catégorie.</p>
+{% endfor %}
