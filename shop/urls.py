@@ -17,7 +17,7 @@ urlpatterns = [
     # Boutique et panier
     path('shop/', views.shop, name='shop'),
     path('cart/', views.cart, name='cart'),
-    path('checkout/', views.cart, name='checkout'),  # Peut-être à remplacer par views.checkout plus tard
+    path('checkout/', views.checkout, name='checkout'),  # Peut-être à remplacer par views.checkout plus tard
 
     path('add-to-cart/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path('remove-from-cart/<int:product_id>/', views.remove_from_cart_session, name='remove_from_cart'),
@@ -27,7 +27,7 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('register/', views.register_view, name='register'),
     path('logout/', views.logout_view, name='logout'),
-
+    path('shop/<int:pk>/', views.shop_deatil, name='shop_deatils'),
     # Réinitialisation de mot de passe
     path('password_reset/', auth_views.PasswordResetView.as_view(
         template_name='password_reset.html',
@@ -64,6 +64,12 @@ urlpatterns = [
 
 
     path('activate/<uidb64>/<token>/', views.activate_account, name='activate'),
+    path('api/cart-items/', views.api_cart_items, name='api_cart_items'),
+    path('paiement/', views.paiement_om, name='paiement_om'),
+    path('merci/', views.checkout_success, name='checkout_success'),
+
+
+
 
 ]
 

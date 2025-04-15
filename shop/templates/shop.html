@@ -148,6 +148,23 @@
       return cookieValue;
     }
 
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      if (toast) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+      }
+    }
+
+    function shakeCartIcon() {
+      const icon = document.querySelector('a[href$="/cart/"] img');
+      if (icon) {
+        icon.classList.add("shake");
+        setTimeout(() => icon.classList.remove("shake"), 400);
+      }
+    }
+
     function refreshCartCountBadge() {
       fetch("{% url 'api_cart_count' %}")
         .then(res => res.json())
@@ -160,41 +177,29 @@
         });
     }
 
-    function showToast(message) {
-      const toast = document.getElementById("toast");
-      if (toast) {
-        toast.textContent = message;
-        toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 3000);
-      }
-    }
-
-    function shakeCartIcon() {
-      const icon = document.querySelector('a[href$="{% url "cart" %}"] img');
-      if (icon) {
-        icon.classList.add("shake");
-        setTimeout(() => icon.classList.remove("shake"), 400);
-      }
-    }
-
     function activateCartButtons() {
       document.querySelectorAll(".btn-add-to-cart").forEach(button => {
         button.addEventListener("click", function(e) {
           e.preventDefault();
           const productId = this.getAttribute("data-product-id");
-          let url = "{% url 'add_to_cart' 0 %}".replace("0", productId);
 
-          fetch(url, {
+          fetch(`/add-to-cart/${productId}/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": getCookie("csrftoken")
             },
-            body: JSON.stringify({ product_id: productId, quantity: 1 })
+            body: JSON.stringify({})
           })
-          .then(response => response.json())
+          
+          .then(response => {
+            if (!response.ok) {
+              return response.text().then(text => { throw new Error(text); });
+            }
+            return response.json();
+          })
           .then(data => {
-            showToast("Produit ajouté au panier !");
+            showToast(data.message || "Ajouté au panier !");
             shakeCartIcon();
             refreshCartCountBadge();
           })
@@ -206,39 +211,11 @@
       });
     }
 
-    document.addEventListener("DOMContentLoaded", function() {
-      refreshCartCountBadge();
+    document.addEventListener("DOMContentLoaded", function () {
       activateCartButtons();
-
-      const searchForm = document.getElementById("search-form");
-      const searchInput = document.getElementById("search-input");
-      const productContainer = document.getElementById("product-container");
-
-      // Recherche AJAX pendant la saisie
-      let searchTimeout = null;
-      searchInput.addEventListener("input", function () {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          const query = searchInput.value;
-
-          fetch(`/api/search-products/?q=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-              productContainer.innerHTML = data.html;
-              activateCartButtons();
-            })
-            .catch(error => {
-              console.error("Erreur AJAX :", error);
-              showToast("Erreur lors de la recherche.");
-            });
-        }, 300); // délai après frappe
-      });
-
-      // Bloquer le formulaire classique
-      searchForm.addEventListener("submit", function(e) {
-        e.preventDefault();
-      });
+      refreshCartCountBadge();
     });
   </script>
+
 </body>
 </html>

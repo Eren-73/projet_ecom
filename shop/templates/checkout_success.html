@@ -1,17 +1,8 @@
-{% load static %}
-{% include "head.html" %}
-<body>
-  {% include "nav.html" %}
-
-  <div class="container text-center py-5">
-    <h1 class="text-success">✅ Merci pour votre achat !</h1>
-    <p class="lead">Votre paiement a été réalisé avec succès.</p>
-
-    <img src="{% static 'images/thank-you.png' %}" alt="Merci" class="img-fluid my-4" style="max-width: 300px;">
-
-    <p>Un email de confirmation vous a été envoyé.</p>
-    <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Retour à la boutique</a>
-  </div>
-
-  {% include "footer.html" %}
-</body>
+{% extends "base.html" %}
+{% block content %}
+<div class="container text-center py-5">
+  <h2 class="mb-4 text-success">✅ Paiement réussi !</h2>
+  <p>Merci pour votre commande. Une facture a été envoyée par e-mail.</p>
+  <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Retour à la boutique</a>
+</div>
+{% endblock %}

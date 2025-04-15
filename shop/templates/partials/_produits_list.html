@@ -17,7 +17,7 @@
         <div class="mt-auto">
           <button type="button"
                   class="btn btn-add-to-cart"
-                  onclick="event.preventDefault(); event.stopPropagation(); ajouterAuPanier({{ produit.id }});">
+                  data-product-id="{{ produit.id }}">
             +
           </button>
         </div>

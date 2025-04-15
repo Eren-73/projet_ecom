@@ -1,124 +1,131 @@
 {% load static %}
+<!doctype html>
+<html lang="en">
+
 {% include "head.html" %}
+
 <body>
+
   {% include "nav.html" %}
 
-  <div class="container py-5">
-    <a href="{% url 'shop' %}" class="btn btn-outline-secondary mb-4">&laquo; Retour à la boutique</a>
-
-    <div class="row">
-      <div class="col-md-6">
-        {% if produit.image_produit %}
-          <img src="{{ produit.image_produit.url }}" class="img-fluid rounded" alt="{{ produit.nom_produit }}">
-        {% else %}
-          <img src="{% static 'images/default-product.jpg' %}" class="img-fluid rounded" alt="Image par défaut">
-        {% endif %}
-      </div>
-      <div class="col-md-6">
-        <h2>{{ produit.nom_produit }}</h2>
-        <p class="text-muted">
-          <span class="badge bg-warning text-dark">
-            {% if produit.categories.first %}{{ produit.categories.first.nom_categorie }}{% else %}Aucune catégorie{% endif %}
-          </span>
-        </p>
-
-        <h4 class="text-success" id="prix-unitaire" data-price="{{ produit.prix }}">${{ produit.prix }}</h4>
-        <p>{{ produit.description }}</p>
-
-        <div class="d-flex align-items-center mb-3">
-          <button class="btn btn-outline-dark" id="decrement">-</button>
-          <input type="text" id="quantity" value="1" class="form-control text-center mx-2" style="width: 60px;" readonly>
-          <button class="btn btn-outline-dark" id="increment">+</button>
+  <div class="hero">
+    <div class="container">
+      <div class="row justify-content-between">
+        <div class="col-lg-5">
+          <div class="intro-excerpt">
+            <h1>Checkout</h1>
+          </div>
         </div>
-
-        <h5>Total : <span id="total-price">${{ produit.prix }}</span></h5>
-
-        <button class="btn btn-warning" id="checkout-button" data-product-id="{{ produit.id }}">Acheter maintenant</button>
       </div>
     </div>
+  </div>
 
-    <!-- Produits similaires -->
-    <hr class="my-5">
-    <h4 class="mb-4">Produits similaires</h4>
-    <div class="row">
-      {% for p in produits_similaires %}
-        <div class="col-md-3 mb-4">
-          <a href="{% url 'produit_detail' p.id %}" class="text-decoration-none text-dark">
-            <div class="card h-100">
-              {% if p.image_produit %}
-                <img src="{{ p.image_produit.url }}" class="card-img-top" style="height: 180px; object-fit: contain;">
-              {% else %}
-                <img src="{% static 'images/default-product.jpg' %}" class="card-img-top" style="height: 180px; object-fit: contain;">
-              {% endif %}
-              <div class="card-body">
-                <h5 class="card-title">{{ p.nom_produit }}</h5>
-                <p class="text-success">${{ p.prix }}</p>
+  <div class="untree_co-section">
+    <div class="container">
+      <div class="row mb-5">
+        <div class="col-md-12">
+          <div class="border p-4 rounded" role="alert">
+            Returning customer? <a href="#">Click here</a> to login
+          </div>
+        </div>
+      </div>
+      <form method="post" action="{% url 'paiement_om' %}" id="checkout-form">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6 mb-5 mb-md-0">
+            <h2 class="h3 mb-3 text-black">Billing Details</h2>
+            <div class="p-3 p-lg-5 border bg-white">
+              <div class="form-group">
+                <label for="c_country" class="text-black">Country <span class="text-danger">*</span></label>
+                <select id="c_country" name="country" class="form-control">
+                  <option value="">Select a country</option>
+                  <option value="CI">Côte d'Ivoire</option>
+                  <option value="FR">France</option>
+                  <option value="US">USA</option>
+                </select>
+              </div>
+              <div class="form-group row">
+                <div class="col-md-6">
+                  <label for="c_fname" class="text-black">First Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="c_fname" name="first_name" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="c_lname" class="text-black">Last Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="c_lname" name="last_name" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="c_address" class="text-black">Address <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="c_address" name="address" required>
+              </div>
+              <div class="form-group">
+                <label for="c_email_address" class="text-black">Email Address <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="c_email_address" name="email" required>
+              </div>
+              <div class="form-group">
+                <label for="c_phone" class="text-black">Phone</label>
+                <input type="text" class="form-control" id="c_phone" name="phone">
               </div>
             </div>
-          </a>
+          </div>
+          <div class="col-md-6">
+            <h2 class="h3 mb-3 text-black">Your Order</h2>
+            <div class="p-3 p-lg-5 border bg-white">
+              <div id="order-summary">
+                <p class="text-muted">Chargement des produits du panier...</p>
+              </div>
+              <div class="form-group mt-4">
+                <label for="telephone" class="form-label">Numéro Orange Money</label>
+                <input type="text" class="form-control" name="telephone" id="telephone" placeholder="Ex: 2250700000000" required>
+              </div>
+              <input type="hidden" name="prix_total" id="prix_total_input" value="0">
+              <div class="form-group mt-4">
+                <button type="submit" class="btn btn-warning btn-lg py-3 btn-block">Payer avec Orange Money</button>
+              </div>
+            </div>
+          </div>
         </div>
-      {% empty %}
-        <p>Aucun produit similaire trouvé.</p>
-      {% endfor %}
+      </form>
     </div>
   </div>
 
   {% include "footer.html" %}
-
-  <script src="https://js.stripe.com/v3/"></script>
-
+  <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/tiny-slider.js' %}"></script>
+  <script src="{% static 'js/custom.js' %}"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const stripe = Stripe("{{ STRIPE_PUBLIC_KEY|default:'' }}");
-
-      const prixUnitaire = parseFloat(document.getElementById("prix-unitaire").dataset.price);
-      const totalPrice = document.getElementById("total-price");
-      const quantityInput = document.getElementById("quantity");
-      const checkoutBtn = document.getElementById("checkout-button");
-
-      document.getElementById("increment").addEventListener("click", () => {
-        let qty = parseInt(quantityInput.value);
-        qty++;
-        quantityInput.value = qty;
-        totalPrice.innerText = "$" + (qty * prixUnitaire).toFixed(2);
-      });
-
-      document.getElementById("decrement").addEventListener("click", () => {
-        let qty = parseInt(quantityInput.value);
-        if (qty > 1) {
-          qty--;
-          quantityInput.value = qty;
-          totalPrice.innerText = "$" + (qty * prixUnitaire).toFixed(2);
-        }
-      });
-
-      checkoutBtn.addEventListener("click", function () {
-        const productId = checkoutBtn.getAttribute("data-product-id");
-        const quantity = parseInt(quantityInput.value);
-        console.log("Début du checkout", { productId, quantity });
-
-
-        fetch("{% url 'create_checkout_session' %}", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": "{{ csrf_token }}"
-          },
-          body: JSON.stringify({ product_id: productId, quantity: quantity })
-        })
-        .then(res => res.json())
+    document.addEventListener("DOMContentLoaded", function() {
+      fetch("{% url 'api_cart_items' %}")
+        .then(response => response.json())
         .then(data => {
-          if (data.id) {
-            return stripe.redirectToCheckout({ sessionId: data.id });
+          const orderSummary = document.getElementById("order-summary");
+          const prixTotalInput = document.getElementById("prix_total_input");
+          if (data.items && data.items.length > 0) {
+            let html = '<table class="table site-block-order-table mb-5">';
+            html += '<thead><tr><th>Product</th><th>Total</th></tr></thead><tbody>';
+            let total = 0;
+            data.items.forEach(item => {
+              const sousTotal = item.prix * item.quantite;
+              total += sousTotal;
+              html += `<tr><td>
+                          <input type="hidden" name="produits" value="${item.id}-${item.quantite}">
+                          ${item.nom} <strong class="mx-2">x</strong> ${item.quantite}</td>
+                          <td>$${sousTotal.toFixed(2)}</td></tr>`;
+            });
+            html += `<tr><td class="text-black font-weight-bold"><strong>Order Total</strong></td>
+                      <td class="text-black font-weight-bold"><strong>$${total.toFixed(2)}</strong></td></tr>`;
+            html += '</tbody></table>';
+            orderSummary.innerHTML = html;
+            prixTotalInput.value = total.toFixed(2);
           } else {
-            alert("Erreur Stripe : " + (data.error || "Session invalide"));
+            orderSummary.innerHTML = '<p class="text-danger">Aucun produit dans votre panier.</p>';
           }
         })
-        .catch(err => {
-          console.error("Erreur Stripe:", err);
-          alert("Erreur Stripe : " + err.message);
+        .catch(error => {
+          console.error("Erreur lors du chargement du panier:", error);
+          document.getElementById("order-summary").innerHTML = '<p class="text-danger">Erreur de chargement du panier.</p>';
         });
-      });
     });
   </script>
 </body>
+</html>

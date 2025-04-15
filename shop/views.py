@@ -5,8 +5,18 @@ from django.urls import reverse
 import stripe
 
 from django.core.mail import EmailMultiAlternatives
-
-
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from io import BytesIO
+import binascii
+from django.core.mail import EmailMessage
+from django.http import FileResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from io import BytesIO
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+import os
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.core.mail import send_mail
@@ -88,8 +98,16 @@ def cart(request):
     cart = request.session.get('cart', {})  # Format : {'produit_id': quantite, ...}
     produits_in_cart = []
     total = Decimal("0.00")
+    # Créez une nouvelle version du panier afin d'exclure les produits non trouvés
+    let_cart = {}
+
     for prod_id, quantity in cart.items():
-        produit = get_object_or_404(Produit, id=prod_id)
+        try:
+            # Conversion en int pour être sûr
+            produit = Produit.objects.get(id=int(prod_id))
+        except Produit.DoesNotExist:
+            # Vous pouvez éventuellement supprimer cet identifiant de la session si besoin
+            continue  # Ignore ce produit s'il n'existe pas
         sous_total = produit.prix * quantity
         produits_in_cart.append({
             "produit": produit,
@@ -97,6 +115,18 @@ def cart(request):
             "sous_total": sous_total,
         })
         total += sous_total
+        let_cart[prod_id] = quantity  # Conserve cet élément si valide
+
+    # Option : Mettre à jour le panier dans la session pour enlever les produits supprimés
+    request.session['cart'] = let_cart
+    request.session.modified = True
+
+    context = {
+        "produits": produits_in_cart,
+        "total": total,
+    }
+    return render(request, "cart.html", context)
+
 
     context = {
         "produits": produits_in_cart,
@@ -107,15 +137,35 @@ def cart(request):
 
 
 
+@login_required
 def checkout(request):
-    return render(request,"checkout.html")
+    if not request.user.is_authenticated:
+        return redirect('login')  # Rediriger vers la connexion si non connecté
+
+    try:
+        panier = Panier.objects.get(utilisateur=request.user)
+        produits = LignePanier.objects.filter(panier=panier)
+        total = sum(item.produit.prix * item.quantite for item in produits)
+    except Panier.DoesNotExist:
+        produits = []
+        total = 0
+
+    return render(request, 'checkout.html', {
+        'produits': produits,
+        'total': total
+    })
 
 def blog(request):
     return render(request,"blog.html")
 
 def shop_deatil(request, pk):
     produit = get_object_or_404(Produit, pk=pk)
-    return render(request, 'shop_detail.html', {'produit': produit})
+    produits_similaires = Produit.objects.filter(categories__in=produit.categories.all()).exclude(id=produit.id)[:4]
+    return render(request, "shop_detail.html", {
+        "produit": produit,
+        "produits_similaires": produits_similaires,
+    })
+
 
 def remove_from_cart(request, product_id):
     cart = request.session.get('cart', {})  # panier au format {'produit_id': quantite, ...}
@@ -129,28 +179,21 @@ def remove_from_cart(request, product_id):
 
 
 
-
 @require_POST
 def add_to_cart(request, product_id):
-    # Récupère le produit ou renvoie 404 s'il n'existe pas
+    # Accepte JSON vide
+    try:
+        json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "message": "Requête invalide"}, status=400)
+
     produit = get_object_or_404(Produit, id=product_id)
-    
-    # Récupère le panier depuis la session (sous forme de dictionnaire)
     cart = request.session.get('cart', {})
-
-    # Ajoute le produit au panier en incrémentant la quantité
-    # On stocke l'ID du produit en tant que chaîne, car les clés de session sont des chaînes.
-    if str(product_id) in cart:
-        cart[str(product_id)] += 1
-    else:
-        cart[str(product_id)] = 1
-
-    # Sauvegarde le panier dans la session
+    cart[str(product_id)] = cart.get(str(product_id), 0) + 1
     request.session['cart'] = cart
-    request.session.modified = True  # Assure que la session est sauvegardée
+    request.session.modified = True
+    return JsonResponse({"success": True, "message": "Produit ajouté au panier!"})
 
-    # Retourne un JSON indiquant le succès
-    return JsonResponse({"success": True, "message": "Produit ajouté dans le panier!"})
     
 
 
@@ -299,38 +342,94 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
+# views.py
+from django.views.decorators.http import require_POST
+
+@require_POST
 def create_checkout_session(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        produit = get_object_or_404(Produit, id=data["product_id"])
-        quantity = data.get("quantity", 1)
+    import stripe
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
-        try:
-            session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
-                line_items=[{
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {
-                            "name": produit.nom_produit[:100],  # sécurité max
-                            "description": produit.description[:200] if produit.description else "",
-                        },
-                        "unit_amount": int(produit.prix * 100),
+    # On récupère les données POST classiques
+    product_id = request.POST.get("product_id")
+    quantity = int(request.POST.get("quantity", 1))
+
+    produit = get_object_or_404(Produit, id=product_id)
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": produit.nom_produit[:100],
+                        "description": produit.description[:200] if produit.description else "",
                     },
-                    "quantity": quantity,
-                }],
-                mode="payment",
-                success_url=f"http://127.0.0.1:8000/checkout/success/",
-                cancel_url=f"http://127.0.0.1:8000/produit/{produit.id}/",
+                    "unit_amount": int(produit.prix * 100),
+                },
+                "quantity": quantity,
+            }],
+            mode="payment",
+            success_url=request.build_absolute_uri(reverse("checkout_success")),
+            cancel_url=request.build_absolute_uri(reverse("cart")),
+        )
+        return redirect(session.url)  # Redirection vers Stripe
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-            )
-            return JsonResponse({"id": session.id})
-        except Exception as e:
-            print("Erreur Stripe:", e)
-            return JsonResponse({"error": str(e)}, status=500)
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+
+
+@login_required
 def checkout_success(request):
-    return render(request, "checkout_success.html")
+    if request.method == "POST":
+        email = request.POST.get("email")
+        produits_raw = request.POST.getlist("produits")
+        total = request.POST.get("prix_total")
+
+        produits_detail = []
+        for p in produits_raw:
+            try:
+                pid, quantite = map(int, p.split("-"))
+                produit = Produit.objects.get(pk=pid)
+                produits_detail.append((produit.nom_produit, produit.prix, quantite))
+            except:
+                continue
+
+        contenu = "Merci pour votre commande !\n\nDétail :\n"
+        for nom, prix, q in produits_detail:
+            contenu += f"{nom} x{q} - ${prix * q:.2f}\n"
+        contenu += f"\nTotal : ${total}\n"
+
+        send_mail(
+            subject="Confirmation de votre commande",
+            message=contenu,
+            from_email="alhousein73@gmail.com",
+            recipient_list=[email],
+            fail_silently=True
+        )
+
+        # Vider le panier ici si besoin
+        request.session["panier_id"] = None
+
+        return render(request, "checkout_success.html", {
+            "produits": produits_detail,
+            "total": total
+        })
+
+    return redirect("shop")
+
+# ✅ Vue pour téléchargement direct
+def telecharger_facture(request):
+    pdf_hex = request.session.get('pdf_data')
+    if not pdf_hex:
+        return HttpResponse("Aucune facture disponible.")
+    pdf_bytes = binascii.unhexlify(pdf_hex)
+    return FileResponse(BytesIO(pdf_bytes), as_attachment=True, filename="facture_Eren'store.pdf")
+
 
 
 
@@ -399,3 +498,52 @@ def activate_account(request, uidb64, token):
     else:
         messages.error(request, "Lien invalide ou expiré.")
         return redirect('register')
+
+
+def api_cart_items(request):
+    panier = Panier.objects.filter(utilisateur=request.user).first()
+    items = []
+    if panier:
+        for ligne in panier.lignes.all():
+            items.append({
+                'id': ligne.produit.id,
+                'nom': ligne.produit.nom_produit,
+                'prix': float(ligne.produit.prix),
+                'quantite': ligne.quantite
+            })
+    return JsonResponse({'items': items})
+
+
+
+
+@login_required
+def paiement_om(request):
+    if request.method == "POST":
+        produits_raw = request.POST.getlist('produits')
+        total = request.POST.get('prix_total')
+        email = request.POST.get('email')
+        telephone = request.POST.get('telephone')
+        nom = f"{request.POST.get('first_name')} {request.POST.get('last_name')}"
+
+        # Simulation de paiement
+        print(f"💸 Paiement simulé pour {nom} ({telephone}) montant ${total}")
+
+        # Vider le panier
+        panier = Panier.objects.filter(utilisateur=request.user).first()
+        if panier:
+            panier.lignes.all().delete()
+
+        # Envoi email de confirmation
+        send_mail(
+            "Confirmation de votre commande",
+            f"Merci {nom},\n\nVotre commande de {total}$ a été prise en compte et sera traitée dans les plus brefs délais.",
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+
+        return redirect('checkout_success')
+    return redirect('shop')
+
+def checkout_success(request):
+    return render(request, "checkout_success.html")

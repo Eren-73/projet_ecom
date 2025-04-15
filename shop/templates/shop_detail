@@ -1,31 +1,34 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Détail du Produit - Eren'store{% endblock %}
-
 {% block content %}
-<div class="container my-5 shop-detail">
+<div class="container py-5 shop-detail">
   <div class="row">
-    <!-- Colonne pour l'image principale du produit -->
+    <!-- Image du produit -->
     <div class="col-md-6">
-      <!-- Vous pouvez utiliser une image dynamique : ex. product.image.url -->
-      <img src="{% static 'images/tshirt.jpg' %}" alt="Produit T-shirt" class="img-fluid rounded">
+      {% if produit.image_produit %}
+        <img src="{{ produit.image_produit.url }}" alt="{{ produit.nom_produit }}" class="img-fluid rounded">
+      {% else %}
+        <img src="{% static 'images/default-product.jpg' %}" alt="Image par défaut" class="img-fluid rounded">
+      {% endif %}
     </div>
-    <!-- Colonne pour les détails du produit -->
+
+    <!-- Détails du produit -->
     <div class="col-md-6">
-      <h1 class="mb-3">T-shirt Basique</h1>
-      <p class="h4 text-primary">$50.00</p>
-      <p class="product-description my-4">
-        Ce t-shirt basique, confectionné à partir de coton de haute qualité, offre un confort inégalé et une coupe moderne,
-        idéal pour une tenue décontractée. Son design épuré en fait un incontournable de votre garde-robe.
-      </p>
-      <!-- Formulaire d'ajout au panier -->
-      <form method="post" action="{% url 'add_to_cart' product.id %}">
+      <h1 class="mb-3">{{ produit.nom_produit }}</h1>
+      <p class="h4 text-primary" id="prix-unitaire" data-price="{{ produit.prix }}">${{ produit.prix }}</p>
+      <p class="product-description my-4">{{ produit.description }}</p>
+
+      <!-- Formulaire d'ajout au panier avec gestion de la quantité -->
+      <form method="post" action="{% url 'add_to_cart' produit.id %}">
         {% csrf_token %}
-        <div class="form-group">
-          <label for="quantity">Quantité :</label>
-          <input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control w-25">
+        <div class="form-group d-flex align-items-center mb-3">
+          <label for="quantity" class="me-2">Quantité :</label>
+          <button type="button" class="btn btn-outline-secondary me-2" id="decrease">–</button>
+          <input type="number" name="quantity" id="quantity" value="1" min="1" class="form-control text-center w-25">
+          <button type="button" class="btn btn-outline-secondary ms-2" id="increase">+</button>
         </div>
+        <p class="mt-3">Total : <span id="total-price" class="fw-bold">${{ produit.prix }}</span></p>
         <button type="submit" class="btn btn-primary mt-3">Ajouter au Panier</button>
       </form>
     </div>
@@ -33,42 +36,89 @@
 
   <hr class="my-5">
 
-  <!-- Section Description Complète -->
+  <!-- Description Complète -->
   <div class="row">
     <div class="col-12">
       <h2>Description Complète</h2>
-      <p>
-        Ici, vous pouvez détailler toutes les caractéristiques du produit : ses matériaux, sa fabrication, ses conseils d’entretien,
-        les tailles disponibles, ainsi que toute autre information utile pour convaincre le client.
-      </p>
+      <p>{{ produit.description }}</p>
     </div>
   </div>
 
-  <!-- Section Produits Similaires -->
+  <!-- Produits Similaires -->
   <div class="row my-5">
     <div class="col-12">
       <h2 class="section-title">Produits Similaires</h2>
       <div class="d-flex flex-wrap justify-content-between">
-        <!-- Exemple de produit similaire 1 -->
-        <div class="similar-product m-2" style="width: 30%;">
-          <img src="{% static 'images/product-1.png' %}" alt="Chemise Classique" class="img-fluid rounded">
-          <h5 class="mt-2">Chemise Classique</h5>
-          <p>$50.00</p>
-        </div>
-        <!-- Exemple de produit similaire 2 -->
-        <div class="similar-product m-2" style="width: 30%;">
-          <img src="{% static 'images/product-2.png' %}" alt="Pantalon Slim" class="img-fluid rounded">
-          <h5 class="mt-2">Pantalon Slim</h5>
-          <p>$78.00</p>
-        </div>
-        <!-- Exemple de produit similaire 3 -->
-        <div class="similar-product m-2" style="width: 30%;">
-          <img src="{% static 'images/product-3.png' %}" alt="Robe Élégante" class="img-fluid rounded">
-          <h5 class="mt-2">Robe Élégante</h5>
-          <p>$43.00</p>
-        </div>
+        {% for p in produits_similaires %}
+          <div class="similar-product m-2" style="width: 30%;">
+            <a href="{% url 'produit_detail' p.id %}" class="text-decoration-none">
+              {% if p.image_produit %}
+                <img src="{{ p.image_produit.url }}" alt="{{ p.nom_produit }}" class="img-fluid rounded">
+              {% else %}
+                <img src="{% static 'images/default-product.jpg' %}" alt="Image par défaut" class="img-fluid rounded">
+              {% endif %}
+              <h5 class="mt-2">{{ p.nom_produit }}</h5>
+              <p>${{ p.prix }}</p>
+            </a>
+          </div>
+        {% endfor %}
       </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  console.log("DOM chargé, script exécuté.");
+  const quantityInput = document.getElementById("quantity");
+  const priceElement = document.getElementById("prix-unitaire");
+  const totalElement = document.getElementById("total-price");
+  const btnPlus = document.getElementById("increase");
+  const btnMinus = document.getElementById("decrease");
+
+  if (!quantityInput || !priceElement || !totalElement || !btnPlus || !btnMinus) {
+    console.error("Un des éléments du DOM est manquant.");
+    return;
+  }
+
+  // Récupère le prix unitaire depuis l'attribut data-price et vérifie que c'est bien un nombre
+  const unitPrice = parseFloat(priceElement.dataset.price);
+  if (isNaN(unitPrice)) {
+    console.error("Le prix unitaire n'est pas un nombre valide.");
+    return;
+  }
+
+  // Fonction pour mettre à jour le total en fonction de la quantité
+  function updateTotal() {
+    const quantity = parseInt(quantityInput.value) || 1;
+    const total = (quantity * unitPrice).toFixed(2);
+    totalElement.textContent = `$${total}`;
+  }
+
+  // Incrémente la quantité
+  btnPlus.addEventListener("click", function() {
+    let currentQty = parseInt(quantityInput.value) || 1;
+    quantityInput.value = currentQty + 1;
+    updateTotal();
+  });
+
+  // Décrémente la quantité (ne descend pas en dessous de 1)
+  btnMinus.addEventListener("click", function() {
+    let currentQty = parseInt(quantityInput.value) || 1;
+    if (currentQty > 1) {
+      quantityInput.value = currentQty - 1;
+      updateTotal();
+    }
+  });
+
+  // Mise à jour en temps réel lors du changement manuel de la quantité
+  quantityInput.addEventListener("input", function() {
+    let value = parseInt(this.value);
+    if (isNaN(value) || value < 1) {
+      this.value = 1;
+    }
+    updateTotal();
+  });
+});
+</script>
 {% endblock %}
