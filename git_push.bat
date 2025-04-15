@@ -4,7 +4,7 @@ set /p message="Message de commit : "
 
 git add .
 git commit -m "%message%"
-git push origin main
+git push origin master
 
 echo.
 echo ✔ Code envoyé sur GitHub avec succès !
